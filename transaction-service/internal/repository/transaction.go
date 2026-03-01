@@ -21,6 +21,7 @@ func New(db *pgxpool.Pool) *repository {
 }
 
 func (r *repository) ApplyTransaction(ctx context.Context, userID uint64, transactionID, sourceType, state string, amount string) error {
+	// Determine delta sign based on state
 	delta := amount
 	if state == "lose" {
 		delta = "-" + amount
@@ -32,6 +33,7 @@ func (r *repository) ApplyTransaction(ctx context.Context, userID uint64, transa
 	}
 	defer tx.Rollback(ctx)
 
+	// Insert transaction record — unique constraint handles idempotency
 	_, err = tx.Exec(ctx,
 		`INSERT INTO payments.transactions (transaction_id, user_id, source_type, state, amount)
 		 VALUES ($1, $2, $3, $4, $5)`,
@@ -45,6 +47,7 @@ func (r *repository) ApplyTransaction(ctx context.Context, userID uint64, transa
 		return fmt.Errorf("insert transaction: %w", err)
 	}
 
+	// Atomically update balance; WHERE balance + delta >= 0 prevents negative balance
 	tag, err := tx.Exec(ctx,
 		`UPDATE accounts.users SET balance = balance + $1 WHERE id = $2 AND balance + $1 >= 0`,
 		delta, userID,
@@ -54,6 +57,8 @@ func (r *repository) ApplyTransaction(ctx context.Context, userID uint64, transa
 	}
 
 	if tag.RowsAffected() == 0 {
+		// Either user doesn't exist or balance would go negative
+		// Check which one it is
 		var exists bool
 		err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM accounts.users WHERE id = $1)`, userID).Scan(&exists)
 		if err != nil {
