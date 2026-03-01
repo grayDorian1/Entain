@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  transaction-service:
+    build: ./transaction-service
+    container_name: transaction-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-entain}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-entain}
+      - POSTGRES_DB=${POSTGRES_DB:-entain}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: entain-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-entain}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-entain}
+      - POSTGRES_DB=${POSTGRES_DB:-entain}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-entain} -d ${POSTGRES_DB:-entain}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

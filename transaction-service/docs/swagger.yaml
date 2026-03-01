@@ -1,0 +1,100 @@
+basePath: /
+definitions:
+  model.BalanceResponse:
+    properties:
+      balance:
+        type: string
+      userId:
+        type: integer
+    type: object
+  model.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  model.TransactionRequest:
+    properties:
+      amount:
+        type: string
+      state:
+        type: string
+      transactionId:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Transaction service
+  title: Entain Transaction API
+  version: "1.0"
+paths:
+  /user/{userId}/balance:
+    get:
+      description: Returns current balance for a user
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.BalanceResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Get user balance
+      tags:
+      - balance
+  /user/{userId}/transaction:
+    post:
+      consumes:
+      - application/json
+      description: Increases or decreases user balance
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: Source type
+        enum:
+        - game
+        - server
+        - payment
+        in: header
+        name: Source-Type
+        required: true
+        type: string
+      - description: Transaction payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.TransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Apply transaction
+      tags:
+      - transactions
+swagger: "2.0"
